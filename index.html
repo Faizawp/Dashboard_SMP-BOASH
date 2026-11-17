@@ -843,13 +843,12 @@
           <div class="display-board">
             <!-- HEADER BAR -->
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 pb-3 border-bottom border-secondary">
-              <div class="container-fluid px-3 px-lg-4">
-                <a class="navbar-brand d-flex align-items-center gap-2 text-white text-decoration-none" href="javascript:void(0)" onclick="App.switchMode('public'); App.switchPublicTab('beranda')">
-                  <span class="brand-badge d-flex align-items-center justify-content-center">
-                  <!-- Ganti 'logo-boash.png' dengan lokasi file gambar Anda -->
-                  <img src="VENSIX VOL 7 LOGO BACKGROUND.png" alt="Logo SMP Boash" style="width: 36px; height: 36px; object-fit: contain;">
-                  </span>
-              <div>
+              <div class="d-flex align-items-center gap-3">
+                <span class="brand-badge d-flex align-items-center justify-content-center">
+                <!-- Ganti 'logo-boash.png' dengan lokasi file gambar Anda -->
+                <img src="VENSIX VOL 7 LOGO BACKGROUND.png" alt="Logo SMP Boash" style="width: 36px; height: 36px; object-fit: contain;">
+                </span>
+                <div>
                   <div class="font-athletic display-6 fw-bold text-white lh-1">
                     ${Utils.escapeHTML(settings.event_name || "VENSIX SMP BOASH VOL 7")}
                   </div>
