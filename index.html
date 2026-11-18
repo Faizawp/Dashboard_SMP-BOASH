@@ -6937,8 +6937,10 @@
         if (this._displaySyncTimer) clearInterval(this._displaySyncTimer);
       }
     };
-
-    window.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener("DOMContentLoaded", () => {
+      App.init();
+    });
+    document.addEventListener('DOMContentLoaded', () => {
       if (!STATE.isGasNative) {
         document.getElementById('btnEndpointConfig').classList.remove('hidden');
       }
@@ -6952,7 +6954,7 @@
         // Jalankan dengan parameter 'silent = true' agar tidak memunculkan loading spinner
         loadAllData(true);
       }, 10000); // 10000 ms = 10 detik
-});
+      });
   </script>
 </body>
 </html>
