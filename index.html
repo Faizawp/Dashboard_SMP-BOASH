@@ -4278,6 +4278,9 @@
       async init() {
         Views.render();
         await this.refreshConnectionAndData();
+        his._displaySyncTimer = setInterval(() => {
+        this.refreshConnectionAndData();
+        }, 5000); // Interval 5 detik
 
         if (Store.state.mode === "display") {
           this.startDisplayTimers();
