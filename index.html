@@ -378,7 +378,7 @@
      * KONFIGURASI DEFAULT FRONTEND
      * ============================================================================
      */
-    const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbyTAFK7TCX3o007TTPbGlDN__MkuF2ptAkZbMT2D7S2KTbB5ETczzF7ojj5fuBd6d8i/exec"; // Tempel URL Web App Google Apps Script Anda di sini jika ingin permanen
+    const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbw5gSCF9-PvG0Mj11wbRst_VA2H3ji5b8h-mkI8kqs-DTP8XF6xllGZohic70vuuMai/exec"; // Tempel URL Web App Google Apps Script Anda di sini jika ingin permanen
 
     /**
      * ============================================================================
@@ -792,9 +792,9 @@
                   </span>
 
                   <div class="flex items-center gap-2">
-                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse mr-1.5"></span>
-                      Live Sync Active
+                    <span id="liveSyncBadge" class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-600 text-white border border-emerald-500 shadow-sm">
+                      <span id="liveSyncDot" class="w-2 h-2 rounded-full bg-white animate-pulse mr-1.5"></span>
+                      <span id="liveSyncText">Live Sync Active</span>
                     </span>
                   </div>
 
@@ -6937,24 +6937,47 @@
         if (this._displaySyncTimer) clearInterval(this._displaySyncTimer);
       }
     };
+
     document.addEventListener("DOMContentLoaded", () => {
       App.init();
-    });
-    document.addEventListener('DOMContentLoaded', () => {
-      if (!STATE.isGasNative) {
-        document.getElementById('btnEndpointConfig').classList.remove('hidden');
-      }
-      document.getElementById('waMessageEditor').value = WA_TEMPLATE_PRESETS.konfirmasi_daftar;
-  
-      // Muat data pertama kali
-      loadAllData();
+      let LAST_SYNC_VERSION = "";
+      let SYNC_TICK_COUNT = 0;
 
-      // AKTIFKAN AUTO LIVE SYNC (Polling setiap 10 detik di background)
-      setInterval(() => {
-        // Jalankan dengan parameter 'silent = true' agar tidak memunculkan loading spinner
-        loadAllData(true);
-      }, 10000); // 10000 ms = 10 detik
-      });
+      function startAutoLiveSync() {
+        setInterval(async () => {
+          // Jangan membebani kuota jika tab browser sedang diminimize / tidak dilihat
+          if (document.hidden) return;
+
+          const badge = document.getElementById("liveSyncBadge");
+          const textEl = document.getElementById("liveSyncText");
+
+          try {
+            const pulseRes = await callApi("getSyncPulse", {}, "GET");
+            if (pulseRes && pulseRes.success && pulseRes.data) {
+              const serverVer = pulseRes.data.syncVersion;
+              SYNC_TICK_COUNT += 1;
+
+              // Tarik data penuh hanya jika ada perubahan data di server atau tiap 30 detik (3 siklus)
+              if (LAST_SYNC_VERSION !== serverVer || SYNC_TICK_COUNT >= 3) {
+                LAST_SYNC_VERSION = serverVer;
+                SYNC_TICK_COUNT = 0;
+                await loadAllData(true); // silent = true (tanpa loading spinner)
+              }
+
+              if (badge && textEl) {
+                badge.className = "inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-600 text-white border border-emerald-500 shadow-sm";
+                textEl.textContent = "Live Sync Active";
+              }
+            }
+          } catch (err) {
+            if (badge && textEl) {
+              badge.className = "inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-600 text-white border border-amber-500 shadow-sm";
+              textEl.textContent = "Reconnecting...";
+            }
+          }
+        }, 10000); // Interval 10 detik
+      }
+    });
   </script>
 </body>
 </html>
