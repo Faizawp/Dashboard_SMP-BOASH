@@ -794,7 +794,7 @@
                   <div class="flex items-center gap-2">
                     <span id="liveSyncBadge" class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-600 text-white border border-emerald-500 shadow-sm">
                       <span id="liveSyncDot" class="w-2 h-2 rounded-full bg-white animate-pulse mr-1.5"></span>
-                      <span id="liveSyncText">Live Sync Active</span>
+                      <span id="liveSyncBadge">Live Sync Active</span>
                     </span>
                   </div>
 
@@ -6938,44 +6938,91 @@
       }
     };
 
-    document.addEventListener("DOMContentLoaded", () => {
-      App.init();
+    window.addEventListener("DOMContentLoaded", async () => {
+      await loadAllData(false);
       let LAST_SYNC_VERSION = "";
       let SYNC_TICK_COUNT = 0;
+      let IS_SYNCING = false;
+
+      function setLiveSyncBadgeState(state, customText) {
+        const badge = document.getElementById("liveSyncBadge");
+        const dot = document.getElementById("liveSyncDot");
+        const textEl = document.getElementById("liveSyncText");
+        if (!badge || !textEl) return;
+
+        if (state === "syncing") {
+          badge.className = "inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-sky-600 text-white border border-sky-500 shadow-sm";
+          if (dot) dot.className = "w-2 h-2 rounded-full bg-white animate-ping mr-1.5";
+          textEl.textContent = customText || "Syncing Data...";
+        } else if (state === "error") {
+          badge.className = "inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-600 text-white border border-amber-500 shadow-sm";
+          if (dot) dot.className = "w-2 h-2 rounded-full bg-white mr-1.5";
+          textEl.textContent = customText || "Reconnecting...";
+        } else {
+          badge.className = "inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-600 text-white border border-emerald-500 shadow-sm";
+          if (dot) dot.className = "w-2 h-2 rounded-full bg-white animate-pulse mr-1.5";
+          textEl.textContent = customText || "Live Sync Active";
+        }
+      }
+
+      async function performSilentRefreshAllActiveViews() {
+        // 1. Segarkan data portal utama secara silent (tanpa spinner)
+        if (typeof loadAllData === "function") {
+          await loadAllData(true);
+        }
+
+        // 2. Jika layar Tournament Display Board TV sedang terbuka, muat ulang datanya
+        const displayView = document.getElementById("displayBoardSection") || document.getElementById("viewDisplayBoard");
+        if (displayView && !displayView.classList.contains("hidden") && typeof loadDisplayBoardData === "function") {
+          await loadDisplayBoardData(true);
+        }
+
+        // 3. Jika Admin sedang login dan membuka tab admin tertentu, segarkan tanpa menutup modal/form
+        const isModalOpen = document.querySelector(".modal-open, [role='dialog']:not(.hidden)");
+        if (!isModalOpen && typeof STATE !== "undefined" && STATE.adminToken) {
+          if (typeof refreshCurrentAdminTab === "function") {
+            await refreshCurrentAdminTab(true);
+          }
+        }
+      }
 
       function startAutoLiveSync() {
         setInterval(async () => {
-          // Jangan membebani kuota jika tab browser sedang diminimize / tidak dilihat
-          if (document.hidden) return;
+          // Jeda polling jika tab browser tidak aktif atau proses sync sebelumnya belum selesai
+          if (document.hidden || IS_SYNCING) return;
 
-          const badge = document.getElementById("liveSyncBadge");
-          const textEl = document.getElementById("liveSyncText");
-
+          IS_SYNCING = true;
           try {
             const pulseRes = await callApi("getSyncPulse", {}, "GET");
             if (pulseRes && pulseRes.success && pulseRes.data) {
-              const serverVer = pulseRes.data.syncVersion;
+              const serverVer = String(pulseRes.data.syncVersion || "");
               SYNC_TICK_COUNT += 1;
 
-              // Tarik data penuh hanya jika ada perubahan data di server atau tiap 30 detik (3 siklus)
-              if (LAST_SYNC_VERSION !== serverVer || SYNC_TICK_COUNT >= 3) {
+              // Pertama kali berjalan: simpan versi awal server
+              if (!LAST_SYNC_VERSION) {
                 LAST_SYNC_VERSION = serverVer;
-                SYNC_TICK_COUNT = 0;
-                await loadAllData(true); // silent = true (tanpa loading spinner)
+                setLiveSyncBadgeState("active", "Live Sync Active");
+                return;
               }
 
-              if (badge && textEl) {
-                badge.className = "inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-600 text-white border border-emerald-500 shadow-sm";
-                textEl.textContent = "Live Sync Active";
+              // Tarik data baru jika versi server berubah atau setiap 30 detik (3 siklus)
+              if (LAST_SYNC_VERSION !== serverVer || SYNC_TICK_COUNT >= 3) {
+                setLiveSyncBadgeState("syncing", "Updating...");
+                LAST_SYNC_VERSION = serverVer;
+                SYNC_TICK_COUNT = 0;
+                await performSilentRefreshAllActiveViews();
               }
+
+              setLiveSyncBadgeState("active", "Live Sync Active");
+            } else {
+              setLiveSyncBadgeState("error", "Sync Retry...");
             }
           } catch (err) {
-            if (badge && textEl) {
-              badge.className = "inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-600 text-white border border-amber-500 shadow-sm";
-              textEl.textContent = "Reconnecting...";
-            }
+            setLiveSyncBadgeState("error", "Reconnecting...");
+          } finally {
+            IS_SYNCING = false;
           }
-        }, 10000); // Interval 10 detik
+        }, 10000); // Cek perubahan setiap 10 detik
       }
     });
   </script>
