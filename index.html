@@ -265,6 +265,31 @@
   <!-- ROOT SPA CONTAINER -->
   <div id="app"></div>
 
+  <!-- MODAL 1: KONFIGURASI BACKEND API URL -->
+  <div class="modal fade" id="apiConfigModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4">
+        <div class="modal-header bg-dark text-white rounded-top-4">
+          <h5 class="modal-title font-athletic fs-4"><i class="bi bi-hdd-network-fill text-warning me-2"></i>Konfigurasi Backend Apps Script</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <p class="small text-muted mb-3">
+            Masukkan URL Web App Google Apps Script (<code>https://script.google.com/macros/s/.../exec</code>) yang telah di-deploy dengan akses <strong>Anyone</strong>.
+          </p>
+          <div class="mb-3">
+            <label class="form-label small fw-bold">URL Web App Google Apps Script</label>
+            <input type="url" id="inputApiUrl" class="form-control" placeholder="https://script.google.com/macros/s/AKfycb.../exec" />
+          </div>
+          <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+            <button type="button" class="btn btn-electric btn-sm px-4" onclick="App.saveApiConfig()">Simpan & Uji Koneksi</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL 2: LOGIN PANITIA / ADMIN / DEWAN JURI -->
   <div class="modal fade" id="loginModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -353,7 +378,7 @@
      * KONFIGURASI DEFAULT FRONTEND
      * ============================================================================
      */
-    const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycby5R3jFJtATwFjkU7EB7ie7SP1VlVYWUX8gZ5atXANh8dYP0nIpZeVpCg1AUS5e5dGs/exec"; // Tempel URL Web App Google Apps Script Anda di sini jika ingin permanen
+    const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbzW4F8Q6t2MjXirG62qXsSJvx1tNQzP0SBgYP2Frj6F3mMgiaPA5_-njtUX-K33ixaA/exec"; // Tempel URL Web App Google Apps Script Anda di sini jika ingin permanen
 
     /**
      * ============================================================================
@@ -549,6 +574,9 @@
         })),
         adminMenu: "dashboard",
         apiConnected: false,
+        liveSyncStatus: "ACTIVE", // ACTIVE | SYNCING | ERROR
+        lastSyncVersion: "",
+        lastSyncTime: "-",
         user: (() => {
           try {
             const raw = localStorage.getItem("BOASH_USER_SESSION");
@@ -766,12 +794,30 @@
                     <i class="bi bi-circle-fill me-1" style="font-size:0.55rem;"></i>${s.apiConnected ? 'API Online' : 'API Offline'}
                   </span>
 
-                  <div class="flex items-center gap-2">
-                    <span id="liveSyncBadge" class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-600 text-white border border-emerald-500 shadow-sm">
-                      <span id="liveSyncDot" class="w-2 h-2 rounded-full bg-white animate-pulse mr-1.5"></span>
-                      <span id="liveSyncBadge">Live</span>
-                    </span>
-                  </div>
+                  <button type="button" id="liveSyncBadge" onclick="App.triggerManualSync()"
+                    title="Klik untuk sinkronisasi data sekarang"
+                    class="btn btn-sm bg-white fw-bold d-inline-flex align-items-center gap-1 px-2 py-1 shadow-sm ${
+                      s.liveSyncStatus === 'SYNCING'
+                        ? 'text-primary border-primary'
+                        : s.liveSyncStatus === 'ERROR'
+                        ? 'text-danger border-danger'
+                        : 'text-success border-success'
+                    }" style="font-size: 0.72rem; border-width: 1.5px;">
+                    <i id="liveSyncDot" class="bi ${
+                      s.liveSyncStatus === 'SYNCING'
+                        ? 'bi-arrow-repeat'
+                        : s.liveSyncStatus === 'ERROR'
+                        ? 'bi-exclamation-circle-fill'
+                        : 'bi-broadcast'
+                    }"></i>
+                    <span id="liveSyncText">${
+                      s.liveSyncStatus === 'SYNCING'
+                        ? 'Syncing...'
+                        : s.liveSyncStatus === 'ERROR'
+                        ? 'Unsynced'
+                        : 'LIVE • ' + Utils.escapeHTML(s.lastSyncTime)
+                    }</span>
+                  </button>
 
                   <a href="?page=display" target="_blank" class="btn btn-sm btn-outline-info">
                     <i class="bi bi-tv me-1"></i>Display
@@ -6912,9 +6958,233 @@
         if (this._displaySyncTimer) clearInterval(this._displaySyncTimer);
       }
     };
+    /**
+ * ============================================================================
+ * BOASH CHAMPIONSHIP HUB - COMPLETE AUTO LIVE SYNC & ADMIN REFRESH ENGINE
+ * Phase 10 & 11 Production Ready (Drop-in Script sebelum)
+ * ============================================================================
+ */
+      /**
+     * ============================================================================
+     * REAL LIVE SYNC ENGINE (TERINTEGRASI DENGAN STORE, APICLIENT & VIEWS)
+     * ============================================================================
+     */
+    const BCH_SYNC_CONFIG = {
+      POLL_INTERVAL_MS: 8000,       // Cek pulse perubahan database setiap 8 detik
+      FORCE_REFRESH_EVERY_TICKS: 4  // Sinkronisasi penuh berkala tiap ~32 detik
+    };
 
-    window.addEventListener("DOMContentLoaded", async () => {
+    Object.assign(App, {
+      _liveSyncTimer: null,
+      _isSyncing: false,
+      _syncTickCount: 0,
+
+      setLiveSyncState(status, timeStr) {
+        Store.state.liveSyncStatus = status;
+        if (timeStr) Store.state.lastSyncTime = timeStr;
+
+        const badge = document.getElementById("liveSyncBadge");
+        const dot = document.getElementById("liveSyncDot");
+        const textEl = document.getElementById("liveSyncText");
+        if (!badge || !textEl) return;
+
+        badge.className = "btn btn-sm bg-white fw-bold d-inline-flex align-items-center gap-1 px-2 py-1 shadow-sm " + (
+          status === "SYNCING" ? "text-primary border-primary" :
+          status === "ERROR" ? "text-danger border-danger" :
+          "text-success border-success"
+        );
+
+        if (dot) {
+          dot.className = "bi " + (
+            status === "SYNCING" ? "bi-arrow-repeat" :
+            status === "ERROR" ? "bi-exclamation-circle-fill" :
+            "bi-broadcast"
+          );
+        }
+
+        textEl.textContent =
+          status === "SYNCING" ? "Syncing..." :
+          status === "ERROR" ? "Unsynced" :
+          "LIVE • " + Store.state.lastSyncTime;
+      },
+
+      isUserBusyInteracting() {
+        // 1. Jangan timpa tampilan jika ada modal Bootstrap yang sedang terbuka
+        if (document.querySelector(".modal.show")) return true;
+
+        // 2. Jangan ganggu kamera QR Check-in yang sedang aktif memindai
+        if (Store.state.checkinWorkspace && Store.state.checkinWorkspace.scannerActive) return true;
+
+        // 3. Jangan reset form pendaftaran publik yang sedang diisi peserta
+        if (
+          Store.state.mode === "public" &&
+          Store.state.publicTab === "pendaftaran" &&
+          Store.state.regSubTab === "form" &&
+          !Store.state.registrationResult
+        ) {
+          return true;
+        }
+
+        // 4. Jangan timpa saat pengguna/admin sedang mengetik di input/textarea/select
+        const activeEl = document.activeElement;
+        if (activeEl) {
+          const tag = activeEl.tagName;
+          if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || activeEl.isContentEditable) {
+            return true;
+          }
+        }
+
+        return false;
+      },
+
+      async refreshActiveAdminDataSilent() {
+        if (!Store.state.user) return;
+        const menu = Store.state.adminMenu;
+
+        if (menu === "dashboard") {
+          const res = await ApiClient.request("getAdminDashboardSummary", {}, true);
+          if (res.success && res.data) Store.state.adminSummary = res.data;
+        } else if (menu === "pendaftaran") {
+          const res = await ApiClient.request("getAdminRegistrations", {}, true);
+          if (res.success && res.data) Store.state.adminRegistrations = res.data.registrations || [];
+        } else if (menu === "sekolah") {
+          const res = await ApiClient.request("getAdminSchools", {}, true);
+          if (res.success && res.data) Store.state.adminSchools = res.data.schools || [];
+        } else if (["tim_futsal", "pemain_futsal", "badminton", "hadroh"].includes(menu)) {
+          const res = await ApiClient.request("getAdminParticipants", {}, true);
+          if (res.success && res.data) Store.state.adminParticipants = res.data;
+        } else if (["pembagian_grup", "jadwal", "hasil", "klasemen"].includes(menu)) {
+          const res = await ApiClient.request("getAdminTournamentData", {}, true);
+          if (res.success && res.data) Store.state.tournamentData = res.data;
+        } else if (menu === "penilaian_juri") {
+          if (Store.state.hadrohWorkspace && Store.state.hadrohWorkspace.isJuryRole) return;
+          const res = await ApiClient.request("getHadrohScoringWorkspace", {}, true);
+          if (res.success && res.data) Store.state.hadrohWorkspace = res.data;
+        } else if (menu === "qr_checkin") {
+          const res = await ApiClient.request("getAdminCheckinData", {}, true);
+          if (res.success && res.data) {
+            Store.state.checkinWorkspace.stats = res.data.stats || {};
+            Store.state.checkinWorkspace.checkins = res.data.checkins || [];
+            Store.state.checkinWorkspace.approvedList = res.data.approvedList || [];
+          }
+        } else if (menu === "galeri") {
+          const res = await ApiClient.request("getAdminGallery", {}, true);
+          if (res.success && res.data) Store.state.adminGallery = res.data.items || [];
+        } else if (menu === "sertifikat") {
+          const res = await ApiClient.request("getAdminCertificates", {}, true);
+          if (res.success && res.data) Store.state.adminCertificates = res.data.certificates || [];
+        } else if (menu === "whatsapp") {
+          const res = await ApiClient.request("getAdminWhatsAppWorkspace", {}, true);
+          if (res.success && res.data) {
+            Store.state.whatsappWorkspace.stats = res.data.stats || {};
+            Store.state.whatsappWorkspace.logs = res.data.logs || [];
+            Store.state.whatsappWorkspace.recipients = res.data.recipients || [];
+          }
+        } else if (menu === "pengumuman") {
+          const res = await ApiClient.request("getAdminAnnouncements", {}, true);
+          if (res.success && res.data) Store.state.adminAnnouncements = res.data.announcements || [];
+        }
+      },
+
+      async performSilentSyncAll() {
+        if (this.isUserBusyInteracting()) return;
+
+        const requests = [
+          ApiClient.request("getPublicBootstrap", {}, false),
+          ApiClient.request("getPublicPortalData", {}, false),
+          ApiClient.request("getPublicGalleryData", {}, false)
+        ];
+
+        if (Store.state.mode === "display") {
+          requests.push(ApiClient.request("getDisplayBoardData", {}, false));
+        }
+
+        const [bootRes, portalRes, galleryRes, displayRes] = await Promise.all(requests);
+
+        if (bootRes && bootRes.success && bootRes.data) Store.state.bootstrap = bootRes.data;
+        if (portalRes && portalRes.success && portalRes.data) Store.state.portalData = portalRes.data;
+        if (galleryRes && galleryRes.success && galleryRes.data) Store.state.galleryData = galleryRes.data;
+        if (displayRes && displayRes.success && displayRes.data) Store.state.displayData = displayRes.data;
+
+        if (Store.state.mode === "admin" && Store.state.user) {
+          await this.refreshActiveAdminDataSilent();
+        }
+
+        // Cek ulang sebelum render agar tidak menimpa interaksi yang baru dimulai saat fetch berlangsung
+        if (!this.isUserBusyInteracting()) {
+          Views.render();
+        }
+      },
+
+      async executeLiveSyncCycle(forceFullSync = false) {
+        if (this._isSyncing) return;
+        this._isSyncing = true;
+
+        try {
+          const pulseRes = await ApiClient.request("getSyncPulse", {}, false, 8000);
+          const nowTime = new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+          if (pulseRes && pulseRes.success && pulseRes.data) {
+            Store.state.apiConnected = true;
+            const serverVer = String(pulseRes.data.syncVersion || "");
+            this._syncTickCount += 1;
+
+            // Inisialisasi versi pertama kali tanpa render ulang ganda
+            if (!Store.state.lastSyncVersion && !forceFullSync) {
+              Store.state.lastSyncVersion = serverVer;
+              this.setLiveSyncState("ACTIVE", nowTime);
+              return;
+            }
+
+            // Jika ada perubahan data di Google Sheets atau waktunya refresh berkala
+            if (
+              forceFullSync ||
+              Store.state.lastSyncVersion !== serverVer ||
+              this._syncTickCount >= BCH_SYNC_CONFIG.FORCE_REFRESH_EVERY_TICKS
+            ) {
+              this.setLiveSyncState("SYNCING");
+              Store.state.lastSyncVersion = serverVer;
+              this._syncTickCount = 0;
+              await this.performSilentSyncAll();
+            }
+
+            this.setLiveSyncState("ACTIVE", nowTime);
+          } else {
+            this.setLiveSyncState("ERROR");
+          }
+        } catch (err) {
+          this.setLiveSyncState("ERROR");
+        } finally {
+          this._isSyncing = false;
+        }
+      },
+
+      async triggerManualSync() {
+        Utils.showToast("Menyinkronkan data terbaru dari server...", "primary");
+        await this.executeLiveSyncCycle(true);
+      },
+
+      startAutoLiveSync() {
+        if (this._liveSyncTimer) clearInterval(this._liveSyncTimer);
+
+        document.addEventListener("visibilitychange", () => {
+          if (!document.hidden) {
+            this.executeLiveSyncCycle(false);
+          }
+        });
+
+        this._liveSyncTimer = setInterval(() => {
+          if (!document.hidden) {
+            this.executeLiveSyncCycle(false);
+          }
+        }, BCH_SYNC_CONFIG.POLL_INTERVAL_MS);
+      }
+    });
+
+    // Jalankan inisialisasi aplikasi utama & aktifkan mesin Auto Live Sync saat DOM siap
+    document.addEventListener("DOMContentLoaded", async () => {
       await App.init();
+      App.startAutoLiveSync();
     });
   </script>
 </body>
