@@ -378,7 +378,7 @@
      * KONFIGURASI DEFAULT FRONTEND
      * ============================================================================
      */
-    const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbwcAPMQpYiwB4abfuoURRDl5hu2ZwZQ0-G88WhgJwj0rUqFWwF9hNxLZ38Ejppa8GpR/exec"; // Tempel URL Web App Google Apps Script Anda di sini jika ingin permanen
+    const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbw5gSCF9-PvG0Mj11wbRst_VA2H3ji5b8h-mkI8kqs-DTP8XF6xllGZohic70vuuMai/exec"; // Tempel URL Web App Google Apps Script Anda di sini jika ingin permanen
 
     /**
      * ============================================================================
@@ -7121,44 +7121,24 @@
         this._isSyncing = true;
 
         try {
-          // Gunakan timeout 15 detik agar aman saat cold start Google Apps Script
-          let pulseRes = await ApiClient.request("getSyncPulse", {}, false, 15000);
-          const nowTime = new Date().toLocaleTimeString("id-ID", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit"
-          });
+          const pulseRes = await ApiClient.request("getSyncPulse", {}, false, 8000);
+          const nowTime = new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
-          // Fallback otomatis ke 'ping' jika endpoint getSyncPulse belum tersedia di deployment GAS
-          let isFallbackPing = false;
-          if (!pulseRes || !pulseRes.success) {
-            const msg = String((pulseRes && pulseRes.message) || "").toLowerCase();
-            if (msg.includes("tidak dikenali") || msg.includes("unknown") || msg.includes("action")) {
-              const pingFallback = await ApiClient.request("ping", {}, false, 15000);
-              if (pingFallback && pingFallback.success) {
-                pulseRes = {
-                  success: true,
-                  data: { syncVersion: String(Date.now()) }
-                };
-                isFallbackPing = true;
-              }
-            }
-          }
-
-          if (pulseRes && pulseRes.success) {
+          if (pulseRes && pulseRes.success && pulseRes.data) {
             Store.state.apiConnected = true;
-            const serverVer = String((pulseRes.data && pulseRes.data.syncVersion) || "1");
+            const serverVer = String(pulseRes.data.syncVersion || "");
             this._syncTickCount += 1;
 
+            // Inisialisasi versi pertama kali tanpa render ulang ganda
             if (!Store.state.lastSyncVersion && !forceFullSync) {
               Store.state.lastSyncVersion = serverVer;
               this.setLiveSyncState("ACTIVE", nowTime);
               return;
             }
 
+            // Jika ada perubahan data di Google Sheets atau waktunya refresh berkala
             if (
               forceFullSync ||
-              isFallbackPing ||
               Store.state.lastSyncVersion !== serverVer ||
               this._syncTickCount >= BCH_SYNC_CONFIG.FORCE_REFRESH_EVERY_TICKS
             ) {
@@ -7170,19 +7150,10 @@
 
             this.setLiveSyncState("ACTIVE", nowTime);
           } else {
-            const errReason = (pulseRes && pulseRes.message) || "Server tidak merespons";
-            console.warn("[LiveSync Error]:", errReason);
             this.setLiveSyncState("ERROR");
-            if (forceFullSync) {
-              Utils.showToast("Gagal sinkronisasi: " + errReason, "danger");
-            }
           }
         } catch (err) {
-          console.warn("[LiveSync Exception]:", err);
           this.setLiveSyncState("ERROR");
-          if (forceFullSync) {
-            Utils.showToast("Error sinkronisasi: " + err.message, "danger");
-          }
         } finally {
           this._isSyncing = false;
         }
@@ -7191,10 +7162,24 @@
       async triggerManualSync() {
         Utils.showToast("Menyinkronkan data terbaru dari server...", "primary");
         await this.executeLiveSyncCycle(true);
-        if (Store.state.liveSyncStatus === "ACTIVE") {
-          Utils.showToast("Data berhasil disinkronkan.", "success");
-        }
       },
+
+      startAutoLiveSync() {
+        if (this._liveSyncTimer) clearInterval(this._liveSyncTimer);
+
+        document.addEventListener("visibilitychange", () => {
+          if (!document.hidden) {
+            this.executeLiveSyncCycle(false);
+          }
+        });
+
+        this._liveSyncTimer = setInterval(() => {
+          if (!document.hidden) {
+            this.executeLiveSyncCycle(false);
+          }
+        }, BCH_SYNC_CONFIG.POLL_INTERVAL_MS);
+      }
+    });
 
     // Jalankan inisialisasi aplikasi utama & aktifkan mesin Auto Live Sync saat DOM siap
     document.addEventListener("DOMContentLoaded", async () => {
