@@ -572,6 +572,28 @@
           nama_anggota: "",
           peran_alat: i === 0 ? "Vokal Utama" : "Terbang / Rebana"
         })),
+        regFormDraft: {
+          nama_sekolah: "",
+          jenjang: "SD",
+          npsn: "",
+          alamat: "",
+          kabupaten_kota: "",
+          nama_kepsek: "",
+          nama_pembina: "",
+          no_wa_pembina: "",
+          email_sekolah: "",
+          futsal_nama_tim: "",
+          futsal_kapten: "",
+          futsal_official: "",
+          futsal_logo: "",
+          futsal_dokumen: "",
+          bdm_kategori_id: "",
+          bdm_pemain_1: "",
+          bdm_pemain_2: "",
+          hadroh_nama_grup: "",
+          hadroh_ketua: "",
+          hadroh_logo: ""
+        },
         adminMenu: "dashboard",
         apiConnected: false,
         liveSyncStatus: "ACTIVE", // ACTIVE | SYNCING | ERROR
@@ -1975,6 +1997,7 @@
         const settings = (Store.state.bootstrap && Store.state.bootstrap.settings) || {};
         const cats = (Store.state.bootstrap && Store.state.bootstrap.master && Store.state.bootstrap.master.badmintonCategories) || [];
         const cabang = Store.state.regFormCabang;
+        const draft = Store.state.regFormDraft || {};
         const minPlayers = parseInt(settings.futsal_min_players || "7", 10);
         const maxPlayers = parseInt(settings.futsal_max_players || "12", 10);
         const res = Store.state.registrationResult;
@@ -2032,7 +2055,7 @@
             <div class="row g-3 mb-4 pb-4 border-bottom">
               <div class="col-md-6">
                 <label class="form-label small fw-semibold">Nama Sekolah Asal *</label>
-                <input type="text" id="regNamaSekolah" class="form-control" placeholder="Contoh: SD Negeri 1 Bogor" required />
+                <input type="text" id="regNamaSekolah" class="form-control" placeholder="Contoh: SD Negeri 1 Bogor" value="${draft.nama_sekolah || ''}" required />
               </div>
               <div class="col-md-3">
                 <label class="form-label small fw-semibold">Jenjang Sekolah *</label>
@@ -2044,31 +2067,31 @@
               </div>
               <div class="col-md-3">
                 <label class="form-label small fw-semibold">NPSN (Opsional)</label>
-                <input type="text" id="regNpsn" class="form-control" placeholder="8 digit NPSN" />
+                <input type="text" id="regNpsn" class="form-control" placeholder="8 digit NPSN" value="${draft.npsn || ''}" />
               </div>
               <div class="col-md-8">
                 <label class="form-label small fw-semibold">Alamat Lengkap Sekolah *</label>
-                <input type="text" id="regAlamat" class="form-control" required />
+                <input type="text" id="regAlamat" class="form-control" value="${draft.alamat || ''}" required />
               </div>
               <div class="col-md-4">
                 <label class="form-label small fw-semibold">Kabupaten / Kota *</label>
-                <input type="text" id="regKabKota" class="form-control" placeholder="Contoh: Kota Bogor" required />
+                <input type="text" id="regKabKota" class="form-control" placeholder="Contoh: Kota Bogor" value="${draft.kabupaten_kota || ''}" required />
               </div>
               <div class="col-md-4">
                 <label class="form-label small fw-semibold">Nama Kepala Sekolah *</label>
-                <input type="text" id="regKepsek" class="form-control" required />
+                <input type="text" id="regKepsek" class="form-control" value="${draft.nama_kepsek || ''}" required />
               </div>
               <div class="col-md-4">
                 <label class="form-label small fw-semibold">Nama Pembina / Official Utama *</label>
-                <input type="text" id="regPembina" class="form-control" required />
+                <input type="text" id="regPembina" class="form-control" value="${draft.nama_pembina || ''}" required />
               </div>
               <div class="col-md-4">
                 <label class="form-label small fw-semibold">No. WhatsApp Pembina *</label>
-                <input type="tel" id="regWaPembina" class="form-control" placeholder="0812xxxxxxxx" required />
+                <input type="tel" id="regWaPembina" class="form-control" placeholder="0812xxxxxxxx" value="${draft.no_wa_pembina || ''}" required />
               </div>
               <div class="col-md-6">
                 <label class="form-label small fw-semibold">Email Sekolah (Opsional)</label>
-                <input type="email" id="regEmailSekolah" class="form-control" placeholder="sekolah@sch.id" />
+                <input type="email" id="regEmailSekolah" class="form-control" placeholder="sekolah@sch.id" value="${draft.email_sekolah || ''}" />
               </div>
             </div>
 
@@ -2078,23 +2101,23 @@
               <div class="row g-3 mb-3">
                 <div class="col-md-4">
                   <label class="form-label small fw-semibold">Nama Tim Futsal *</label>
-                  <input type="text" id="regFutsalNamaTim" class="form-control" required />
+                  <input type="text" id="regFutsalNamaTim" class="form-control" value="${draft.nama_tim_futsal || ''}" required />
                 </div>
                 <div class="col-md-4">
                   <label class="form-label small fw-semibold">Nama Kapten Tim *</label>
-                  <input type="text" id="regFutsalKapten" class="form-control" required />
+                  <input type="text" id="regFutsalKapten" class="form-control" value="${draft.nama_kapten || ''}" required />
                 </div>
                 <div class="col-md-4">
                   <label class="form-label small fw-semibold">Nama Official Pendamping</label>
-                  <input type="text" id="regFutsalOfficial" class="form-control" />
+                  <input type="text" id="regFutsalOfficial" class="form-control" value="${draft.nama_official || ''}" />
                 </div>
                 <div class="col-md-6">
                   <label class="form-label small fw-semibold">Tautan Logo Tim (Google Drive / URL Opsional)</label>
-                  <input type="url" id="regFutsalLogo" class="form-control" placeholder="https://..." />
+                  <input type="url" id="regFutsalLogo" class="form-control" placeholder="https://..." value="${draft.tautan_logo || ''}" />
                 </div>
                 <div class="col-md-6">
                   <label class="form-label small fw-semibold">Tautan Berkas Persyaratan (Google Drive Opsional)</label>
-                  <input type="url" id="regFutsalDokumen" class="form-control" placeholder="https://drive.google.com/..." />
+                  <input type="url" id="regFutsalDokumen" class="form-control" placeholder="https://drive.google.com/..." value="${draft.tautan_dokumen || ''}" />
                 </div>
               </div>
 
@@ -2152,36 +2175,58 @@
               </div>
             ` : ""}
 
-            ${cabang === "BADMINTON" ? `
-              <h5 class="font-athletic fs-3 fw-bold text-primary mb-3">3. Data Kategori & Atlet Badminton</h5>
-              <div class="row g-3 mb-4">
-                <div class="col-md-4">
-                  <label class="form-label small fw-semibold">Kategori Pertandingan *</label>
-                  <select id="regBdmKategori" class="form-select" onchange="Views.render()">
-                    ${cats.map(c => `<option value="${Utils.escapeHTML(c.kategori_id)}" data-tipe="${Utils.escapeHTML(c.tipe)}">${Utils.escapeHTML(c.nama_kategori)} (${Utils.escapeHTML(c.tipe)})</option>`).join("")}
-                  </select>
+            ${cabang === "BADMINTON" ? (() => {
+              const selectedBdmCatId = draft.bdm_kategori_id || (cats[0] ? cats[0].kategori_id : "");
+              const selectedBdmCat = cats.find(c => c.kategori_id === selectedBdmCatId) || cats[0] || {};
+              const isBdmDouble = ["DOUBLE", "GANDA"].includes(String(selectedBdmCat.tipe || "").toUpperCase());
+
+              return `
+                <h5 class="font-athletic fs-3 fw-bold text-primary mb-3">3. Data Kategori & Atlet Badminton</h5>
+                <div class="row g-3 mb-4">
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Kategori Pertandingan *</label>
+                    <select id="regBdmKategori" class="form-select" onchange="App.changeBadmintonCategory(this.value)">
+                      ${cats.map(c => `
+                        <option value="${Utils.escapeHTML(c.kategori_id)}"
+                                data-tipe="${Utils.escapeHTML(c.tipe)}"
+                                ${c.kategori_id === selectedBdmCatId ? 'selected' : ''}>
+                          ${Utils.escapeHTML(c.nama_kategori)} (${Utils.escapeHTML(c.tipe)})
+                        </option>
+                      `).join("")}
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Nama Pemain Utama *</label>
+                    <input type="text" id="regBdmPemain1" class="form-control"
+                           value="${Utils.escapeHTML(draft.bdm_pemain_1)}"
+                           oninput="App.updateRegDraft('bdm_pemain_1', this.value)" required />
+                  </div>
+                  ${isBdmDouble ? `
+                    <div class="col-md-4">
+                      <label class="form-label small fw-semibold">Nama Pemain 2 *</label>
+                      <input type="text" id="regBdmPemain2" class="form-control"
+                             value="${Utils.escapeHTML(draft.bdm_pemain_2)}"
+                             oninput="App.updateRegDraft('bdm_pemain_2', this.value)" required />
+                    </div>
+                  ` : ""}
                 </div>
-                <div class="col-md-4">
-                  <label class="form-label small fw-semibold">Nama Pemain Utama *</label>
-                  <input type="text" id="regBdmPemain1" class="form-control" required />
-                </div>
-              </div>
-            ` : ""}
+              `;
+            })() : ""}
 
             ${cabang === "HADROH" ? `
               <h5 class="font-athletic fs-3 fw-bold text-primary mb-3">3. Data Grup & Anggota Hadroh</h5>
               <div class="row g-3 mb-3">
                 <div class="col-md-4">
                   <label class="form-label small fw-semibold">Nama Grup Hadroh *</label>
-                  <input type="text" id="regHadrohNamaGrup" class="form-control" required />
+                  <input type="text" id="regHadrohNamaGrup" class="form-control" value="${draft.nama_grup || ''}" required />
                 </div>
                 <div class="col-md-4">
                   <label class="form-label small fw-semibold">Nama Ketua Grup *</label>
-                  <input type="text" id="regHadrohKetua" class="form-control" required />
+                  <input type="text" id="regHadrohKetua" class="form-control" value="${draft.nama_ketua || ''}" required />
                 </div>
                 <div class="col-md-4">
                   <label class="form-label small fw-semibold">Tautan Foto / Logo Grup (Opsional)</label>
-                  <input type="url" id="regHadrohLogo" class="form-control" placeholder="https://..." />
+                  <input type="url" id="regHadrohLogo" class="form-control" placeholder="https://..." value="${draft.tautan_logo || ''}" />
                 </div>
               </div>
 
@@ -4468,11 +4513,82 @@
       },
 
       /* --- REGISTRATION CONTROLLERS --- */
+      updateRegDraft(field, val) {
+        if (!Store.state.regFormDraft) Store.state.regFormDraft = {};
+        Store.state.regFormDraft[field] = val;
+      },
+
+      syncRegFormDraftFromDom() {
+        const readVal = (id, fallback = "") => {
+          const el = document.getElementById(id);
+          return el ? el.value : fallback;
+        };
+        const d = Store.state.regFormDraft || {};
+        Store.state.regFormDraft = {
+          ...d,
+          nama_sekolah: readVal("regNamaSekolah", d.nama_sekolah),
+          jenjang: readVal("regJenjang", d.jenjang || "SD"),
+          npsn: readVal("regNpsn", d.npsn),
+          alamat: readVal("regAlamat", d.alamat),
+          kabupaten_kota: readVal("regKabKota", d.kabupaten_kota),
+          nama_kepsek: readVal("regKepsek", d.nama_kepsek),
+          nama_pembina: readVal("regPembina", d.nama_pembina),
+          no_wa_pembina: readVal("regWaPembina", d.no_wa_pembina),
+          email_sekolah: readVal("regEmailSekolah", d.email_sekolah),
+          futsal_nama_tim: readVal("regFutsalNamaTim", d.futsal_nama_tim),
+          futsal_nama_kapten: readVal("regFutsalKapten", d.futsal_nama_kapten),
+          futsal_nama_official: readVal("regFutsalOfficial", d.futsal_nama_official),
+          futsal_logo_url: readVal("regFutsalLogo", d.futsal_logo_url),
+          futsal_dokumen_url: readVal("regFutsalDokumen", d.futsal_dokumen_url),
+          hadroh_nama_grup: readVal("regHadrohNamaGrup", d.hadroh_nama_grup),
+          hadroh_nama_ketua: readVal("regHadrohKetua", d.hadroh_nama_ketua),
+          hadroh_logo_url: readVal("regHadrohLogo", d.hadroh_logo_url),
+          bdm_kategori_id: readVal("regBdmKategori", d.bdm_kategori_id),
+          bdm_pemain_1: readVal("regBdmPemain1", d.bdm_pemain_1),
+          bdm_pemain_2: readVal("regBdmPemain2", d.bdm_pemain_2)
+        };
+      },
+
+      resetRegFormDraft() {
+        Store.state.regFormDraft = {
+          nama_sekolah: "",
+          jenjang: "SD",
+          npsn: "",
+          alamat: "",
+          kabupaten_kota: "",
+          nama_kepsek: "",
+          nama_pembina: "",
+          no_wa_pembina: "",
+          email_sekolah: "",
+          futsal_nama_tim: "",
+          futsal_nama_kapten: "",
+          futsal_nama_official: "",
+          futsal_logo_url: "",
+          futsal_dokumen_url: "",
+          hadroh_nama_grup: "",
+          hadroh_nama_ketua: "",
+          hadroh_logo_url: ""
+        };
+        Store.state.regFutsalPlayers = Array.from({ length: 7 }, (_, i) => ({
+          nama_pemain: "",
+          nomor_punggung: String(i + 1),
+          posisi: i === 0 ? "GK" : "PLAYER",
+          is_kapten: i === 0
+        }));
+      },
+      
+      changeBadmintonCategory(kategoriId) {
+        this.syncRegFormDraftFromDom();
+        Store.state.regFormDraft.bdm_kategori_id = kategoriId;
+        Views.render();
+      },
+
       addFutsalPlayerRow(maxPlayers) {
         if (Store.state.regFutsalPlayers.length >= maxPlayers) {
           Utils.showToast(`Maksimal pemain Futsal adalah ${maxPlayers} orang.`, "warning");
           return;
         }
+        this.syncRegFormDraftFromDom();
         const nextNum = Store.state.regFutsalPlayers.length + 1;
         Store.state.regFutsalPlayers.push({
           nama_pemain: "",
@@ -4488,6 +4604,7 @@
           Utils.showToast(`Minimal pemain Futsal adalah ${minPlayers} orang.`, "warning");
           return;
         }
+        this.syncRegFormDraftFromDom();
         Store.state.regFutsalPlayers.splice(idx, 1);
         Views.render();
       },
@@ -4559,10 +4676,11 @@
             players: Store.state.regFutsalPlayers
           };
         } else if (cabang === "BADMINTON") {
+          const p2El = document.getElementById("regBdmPemain2");
           payload.badminton = {
             kategori_id: document.getElementById("regBdmKategori").value,
             nama_pemain_1: document.getElementById("regBdmPemain1").value,
-            nama_pemain_2: document.getElementById("regBdmPemain2").value
+            nama_pemain_2: p2El ? p2El.value : ""
           };
         } else if (cabang === "HADROH") {
           payload.hadroh = {
